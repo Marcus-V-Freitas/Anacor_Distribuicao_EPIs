@@ -1,9 +1,13 @@
 ---
 title: "Distribuição de Equipamentos de Proteção Individual e Insumos– Covid- 19"
 author: "Marcus Vinicius de Freitas Costa"
-date: "05 de setembro, 2021" 
-output: html_notebook
+date: "05 de setembro, 2021"
+output: html_document
 ---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) #Remover warnings do relatório
+```
 
 # Introdução
 
@@ -223,14 +227,15 @@ Agora vamos criar um objeto com a quantidade de categorias de cada variável da 
 variaveis <- apply(epis,
                 MARGIN =  2,
                 FUN = function(x) nlevels(as.factor(x)))
-variaveis
+
+variaveis <- sort(variaveis,decreasing = T)
 
 ```
 Por fim juntaremos as coordenadas com as categorias
 
 ```{r echo=FALSE}
 coordenadas_variaveis <- data.frame(coordenadas, 
-                                   variavel = rep(names(variaveis), variaveis))
+                                    variavel = rep(names(variaveis), variaveis))
 coordenadas_variaveis
 ```
 Ótimo, já temos tudo que precisamos para criação de nossos mapas.
@@ -261,6 +266,7 @@ coordenadas_variaveis %>%
         legend.position = "none")
 
 ```
+
 ## Criando mapa perceptual tridimensional dos dados
 
 Por fim vamos plotar esses dados num gráfico com 3 dimensões dinâmico com o plotly.
