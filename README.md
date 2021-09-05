@@ -24,6 +24,10 @@ Tópicos:
 * Criando mapa perceptual bidimensional dos dados
 * Criando mapa perceptual tridimensional dos dados
 
+## Mapa Bidimensional Gerado
+
+![Mapa Perceptual](https://github.com/Marcus-V-Freitas/Anacor_Distribuicao_EPIs/blob/main/Anacor.png)
+
 ## Tecnologias Utilizadas
 
 - [R](https://www.r-project.org/)
