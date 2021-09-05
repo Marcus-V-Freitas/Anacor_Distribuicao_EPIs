@@ -1,0 +1,311 @@
+---
+title: "Distribuição de Equipamentos de Proteção Individual e Insumos– Covid- 19"
+author: "Marcus Vinicius de Freitas Costa"
+date: "05 de setembro, 2021" 
+output: html_notebook
+---
+
+# Introdução
+
+![Logo SUS](logo-sus-png.png)
+
+A sigla EPI significa 'equipamento de proteção individual', ele é um direito garantido pela Norma Regulamentadora NR06 do Ministério do Trabalho e Emprego (MTE), e é definido como: "todo dispositivo ou produto, de uso individual utilizado pelo trabalhador, destinado à proteção de riscos suscetíveis de ameaçar a segurança e a saúde no trabalho".
+
+Mesmo antes da pandemia, os EPI's já eram bastante utilizados, principalmente em indústrias e outros postos de trabalho com maiores riscos ocupacionais. Porém, durante a pandemia não só o Brasil, como todo o restante do globo, passaram a estender essa prática de uso de EPI's para praticamente toda a população. 
+
+São diversos os tipos de EPI’s, empregados entre os quais podemos citar os abaixo os mais populares:
+
+* Óculos de proteção;
+* Protetores auriculares;
+* Máscaras;
+* Magotes;
+* Capacetes;
+* Luvas;
+* Botas, 
+* Cintos de segurança;
+* Protetor solar.
+
+Devido à alta na procura e utilização desses equipamentos no período, planos de logística passaram à ser traçados para garantir a proteção dos profissionais de saúde que atuam na linha de frente do enfretamente à COVID-19. 
+
+Nessa análise focaremos na distribuição realizada pelo ministério da saúde em todo o país que auxiliou e reforçou as redes de saúde dos estados e municípios no combate à pandemia.
+
+Nosso objetivo será visualizar quais materiais foram mais vezes solicitados pelos estados até o dia 05/09/2021. 
+
+
+## Importar Libs
+
+Bibliotecas que usaremos.
+
+* plotly: Montagem de gráficos 3D interativos
+* tidyverse: Biblioteca com funcionalidades gerais para ciência de dados
+* ggrepel: Afastar rótulos de texto que podem ser sobreescrever
+* knitr: Geração de relatórios dinâmicos
+* kableExtra: Permite criação de tabelas HTML estilizadas
+* FactoMineR: Realizar a análise de correspondência simples
+
+```{r echo=FALSE}
+
+pacotes <- c("plotly","tidyverse","ggrepel","knitr","kableExtra","FactoMineR")
+
+#Verificar se pacote está instalado e carregar todos 
+for (i in pacotes){
+     if(! i %in% installed.packages()){
+         install.packages(i, dependencies = TRUE)
+     }
+     sapply(pacotes, require, character = T) 
+}
+
+options(ggrepel.max.overlaps = Inf) #Permitir que mais rótulos sejam afastados 
+```
+
+## Importar base de dados
+
+Origem da base de dados:
+https://opendatasus.saude.gov.br/dataset/distribuicao-de-equipamentos-de-protecao-individual-e-insumos-covid-19
+
+Licenciamento:
+Os dados disponibilizados pelo Poder Executivo Federal em formato aberto são de livre utilização e reúso, observados os termos constantes do inc. IV do art 3º e do art. 4 do Decreto nº 8777/16.
+
+```{r echo=FALSE}
+epis <- read.csv('distribuicao_epi.csv',header = T,sep=";")
+head(epis)
+```
+
+Resumo dos dados da base 
+
+* material: material de saúde entregue;
+
+* data.saida: data de saída para entrega;
+
+* n.pedido: número do pedido;
+
+* requisitante: Estado de destino;
+
+* unidade: unidade de medida;
+
+* quantidade: quantidade entregue;
+
+* status: status da entrega.
+
+## Corrigindo tipos de dados no  dataframe
+
+Ao observar nossa base de dados, veremos que os tipos vierão todos como "character". vamos corrigi-los e realizar um sumário para verificar se tudo está correto agora.
+
+* factor: material, requisitante, status
+* numerical: quantidade
+* character: n.pedido, unidade
+* date: data.saida
+
+```{r echo=FALSE}
+
+epis$n.pedido <- as.character(epis$n.pedido)
+epis$quantidade <- as.numeric(epis$quantidade)
+epis$material <- as.factor(epis$material)
+epis$requisitante <- as.factor(epis$requisitante)
+epis$status <- as.factor(epis$status)
+epis$data.saida <- as.Date.character(epis$data.saida,format = c("%d/%m/%Y"))
+  
+summary(epis)
+```
+
+## Pré-Análise dos dados
+
+Primeiro verificaremos se todas as solicitações analisadas estão com o status de "Entregue".
+
+```{r echo=FALSE}
+
+as.character(unique(unlist(epis[,c('status')])))
+
+```
+
+Já podemos ter um insight que todas as solicitações realizadas aqui estão cumpridas, sem necessidade de análises adicionais desse ponto.
+
+
+## Escolha dos atributos para análise
+
+Tendo em vista que nosso objetivo é analisar somente a quantidade de solicitações para os estados ao longo do tempo,
+podemos selecionar as variáveis "material" e "requisitante" para esse fim.
+
+```{r echo=FALSE}
+epis <- epis[,c('material','requisitante')]
+
+summary(epis)
+```
+
+Veja bem esse ponto: Ambas são categóricas.
+
+Nesse caso podemos utilizar uma interessante análise não supervisionada para este caso: A análise de Correspondências Simples (Para mais detalhes, pode-se verificar um outro projeto meu explicando passo a passo como é realizada a análise de Correspondência Simples nesse link: [Analise_Correspondencia_Covid](https://github.com/Marcus-V-Freitas/Analise_Correspondencia_Covid)).
+
+## Visualização mais elegante dos dados 
+
+Abaixo apenas uma visualização mais detalhista feitas atráves do kable que permite adicionar à tabela estilos à tabelas com nomenclatura do [boostrap](https://getbootstrap.com/)
+
+```{r echo=FALSE}
+head(epis) %>% 
+  kable() %>%
+  kable_styling(bootstrap_options = "striped", 
+                font_size = 12)
+```
+## Definição da Tabela de Frequências
+
+O primeiro passo de uma análise de correspondência simples é a montagem de um tabela de frequências
+das nossas duas variáveis, ou seja, demonstrar quantas vezes uma aparece junto à outra.
+
+```{r echo=FALSE}
+tab <- table(epis$requisitante,
+             epis$material) 
+
+tab
+```
+## Teste qui-Quadrado para verificar aderência da base de dados
+
+Agora devemos verificar se as relações entre as nossas variáveis se dá ou não de forma aleatória.
+
+Se nosso p-value resultante for menor que o grau de significância (nesse caso 0,5) existirá associação.
+
+H0: (Hipótese Nula): Aleatoriedade de associação (Não há associação)
+H1:  (Hipótese Alternativa): Existência de associação
+
+```{r echo=FALSE}
+qui2 <- chisq.test(tab,simulate.p.value = T)
+qui2
+
+```
+Comprovado via teste estático, que existe relação de associação à um grau de significância de 0.5.
+
+## Mapa de Calor dos Resíduos Padronizados Ajustados
+
+Sempre ao analisar um mapa perceptual (o output esperado de nossa modelo) devemos ter conosco um mapa com um os resíduos padronizados ajustados. Esse mapa tem a finalidade de explicitar as maiores relações e ajudará na interpretação do mapa.
+
+```{r echo=FALSE}
+
+# Mapa de calor dos resíduos padronizados ajustados
+data.frame(qui2$stdres) %>%
+  rename(requisitante = 1,
+         material = 2) %>% 
+  ggplot(aes(x = requisitante, y = material, fill = Freq, label = round(Freq,3))) +
+  geom_tile() +
+  geom_text(size = 3, angle = 90) +
+  scale_fill_gradient2(low = "#440154FF", 
+                       mid = "white", 
+                       high = "#FDE725FF",
+                       midpoint = 0) +
+  labs(x = NULL, y = NULL) +
+  theme(legend.title = element_blank(), 
+        panel.background = element_rect("white"),
+        legend.position = "none",
+        axis.text.x = element_text(angle = 90))
+
+```
+
+## Criação do Modelo de análise de Correspondências Simples
+
+Feitos os diagnósticos, podemos então criar nosso modelo utilizando a tabela de frequências anterior.
+A saída dessa biblioteca é um mapa perceptual bem simples com as duas principais dimensões geradas, ou seja, as que capturam a maior parte da variância. 
+
+```{r echo=FALSE}
+modelo <- CA(tab)
+```
+Podemos confirmar isso pelos eighvalues gerados e sua variância acumulada  
+
+```{r echo=FALSE}
+modelo$eig
+```
+Agora vamos guardar todas as coordendas geradas (linhas e colunas) num único objeto. 
+
+```{r echo=FALSE}
+coordenadas <- rbind(modelo$row$coord, modelo$col$coord)
+coordenadas
+```
+Agora vamos criar um objeto com a quantidade de categorias de cada variável da base de dados.
+
+```{r echo=FALSE}
+variaveis <- apply(epis,
+                MARGIN =  2,
+                FUN = function(x) nlevels(as.factor(x)))
+variaveis
+
+```
+Por fim juntaremos as coordenadas com as categorias
+
+```{r echo=FALSE}
+coordenadas_variaveis <- data.frame(coordenadas, 
+                                   variavel = rep(names(variaveis), variaveis))
+coordenadas_variaveis
+```
+Ótimo, já temos tudo que precisamos para criação de nossos mapas.
+
+## Criando mapa perceptual bidimensional dos dados
+
+Primeiro plotaremos os dados novamente num plano de 2 dimensões porém num mapa mais detalhado e amigável.  
+
+```{r echo=FALSE}
+coordenadas_variaveis %>% 
+  rownames_to_column() %>% 
+  rename(categoria = 1) %>% 
+  ggplot(aes(x = Dim.1, 
+             y = Dim.2, 
+             label = categoria, 
+             color = variavel, 
+             shape = variavel)) +
+  geom_point(size = 3) +
+  geom_label_repel() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(x = paste("Dimensão 1:", paste0(round(modelo$eig[1,2], digits = 2), "%")),
+       y = paste("Dimensão 2:", paste0(round(modelo$eig[2,2], digits = 2), "%"))) +
+  scale_color_viridis_d() +
+  theme(panel.background = element_rect("white"),
+        panel.border = element_rect("NA"),
+        panel.grid = element_line("gray95"),
+        legend.position = "none")
+
+```
+## Criando mapa perceptual tridimensional dos dados
+
+Por fim vamos plotar esses dados num gráfico com 3 dimensões dinâmico com o plotly.
+
+```{r echo=FALSE}
+coordenadas_linhas <- modelo$row$coord
+coordenadas_linhas
+
+# Capturando as coordenadas das categorias da variável disposta em coluna
+coordenadas_colunas <- modelo$col$coord
+coordenadas_colunas
+
+mapa_perceptual_3D <- plot_ly() 
+
+# Inserindo as coordenadas das categorias da variável disposta em linha
+mapa_perceptual_3D <- add_trace(mapa_perceptual_3D, 
+                                x = coordenadas_linhas[,1], 
+                                y = coordenadas_linhas[,2],
+                                z = coordenadas_linhas[,3],
+                                mode = "text", 
+                                type="scatter3d",
+                                text = rownames(coordenadas_linhas),
+                                textfont = list(color = "#440154FF"), 
+                                showlegend = FALSE) 
+
+# Inserindo as coordenadas das categorias da variável disposta em coluna
+mapa_perceptual_3D <- add_trace(mapa_perceptual_3D, 
+                                x = coordenadas_colunas[,1], 
+                                y = coordenadas_colunas[,2], 
+                                z = coordenadas_colunas[,3],
+                                mode = "text", 
+                                type="scatter3d",
+                                text = rownames(coordenadas_colunas),
+                                textfont = list(color = "#287C8EFF"), 
+                                showlegend = FALSE) 
+
+# Inserindo o nome dos eixos (Dimensão 1, Dimensão 2 e Dimensão 3)
+mapa_perceptual_3D <- layout(mapa_perceptual_3D, 
+                             scene = list(xaxis = list(title = colnames(coordenadas_linhas)[1]),
+                                          yaxis = list(title = colnames(coordenadas_linhas)[2]),
+                                          zaxis = list(title = colnames(coordenadas_linhas)[3]),
+                                          aspectmode = "data"),
+                             margin = list(l = 0, r = 0, b = 0, t = 0))
+
+mapa_perceptual_3D
+```
+
+
